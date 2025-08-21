@@ -95,3 +95,32 @@ To learn more about React Native, take a look at the following resources:
 - [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
 - [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
 - [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+
+# RNDeliveryWorkshop
+
+This project has been reorganized to follow a scalable React Native source structure.
+
+## Source structure
+
+```
+src/
+  app/          # App root and providers (App.tsx lives here)
+  navigation/   # Navigators and navigation types
+  screens/      # Screen components (one folder per screen)
+  components/   # Reusable UI components
+  hooks/        # Custom React hooks
+  services/     # API/HTTP, storage, analytics, platform services
+  store/        # State management (Redux/Zustand/etc.)
+  theme/        # Design tokens and theming helpers
+  utils/        # General utilities and helpers
+  types/        # Global/shared TypeScript types
+  config/       # Environment and configuration helpers
+  assets/       # Static assets (images, fonts)
+```
+
+Entry file `index.js` still imports from `./App`, which now proxies to `./src/app/App` to keep the entry stable while adopting the new structure.
+
+## Next steps
+- Add your initial navigation under `src/navigation` and point `src/app/App.tsx` to use it.
+- Consider adding TypeScript path aliases as the project grows.
+- Keep components small and reusable; co-locate tests with implementation or inside `__tests__`.
