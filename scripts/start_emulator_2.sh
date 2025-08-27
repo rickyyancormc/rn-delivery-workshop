@@ -2,7 +2,7 @@
 set -e
 
 echo "Criando AVD para Emulator 2..."
-avdmanager create avd --force -n Pixel_8_Pro_API_35 --package 'system-images;android-33;default;x86_64' --device 'Nexus'
+avdmanager create avd --force -n Pixel_8_Pro_API_35 --package 'system-images;android-33;default;x86_64'
 
 echo "Iniciando Emulator 2 na porta 5556..."
 nohup /usr/local/lib/android/sdk/emulator/emulator -port 5556 -avd Pixel_8_Pro_API_35 -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim &
