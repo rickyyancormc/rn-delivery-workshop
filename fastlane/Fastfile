@@ -19,6 +19,13 @@ def get_play_store_service_file()
     decode_base64_string(encoded_play_store_service_file_string, decoded_play_store_service_file_path)
     decoded_play_store_service_file_path
 end
+def get_app_store_connect_api_key_path()
+    project_directory = get_root_project_directory()
+    encoded_apple_api_key_string = ENV['WORKSHOP_APPLE_API_KEY']
+    decoded_apple_api_key_path = "#{project_directory}/fastlane/certs/apikey.json"
+    decode_base64_string(encoded_apple_api_key_string, decoded_apple_api_key_path)
+    decoded_apple_api_key_path
+end
 
 platform :android do
     before_all do
@@ -65,6 +72,65 @@ platform :android do
             skip_upload_images: true,
             skip_upload_screenshots: true,
             release_status: "draft", #TODO: it on draft mode just for testing otherwise it won't allow to upload
+        )
+    end
+end
+platform :ios do
+    before_all do
+        setup_ci
+    end
+
+    lane :certificates do
+        api_key_path = get_app_store_connect_api_key_path()
+
+        match(api_key_path: api_key_path, type: "development", readonly: true)
+        match(api_key_path: api_key_path, type: "appstore", readonly: true)
+    end
+    lane :update_certificates do
+        api_key_path = get_app_store_connect_api_key_path()
+        match(api_key_path: api_key_path, type: "development", force: true)
+        match(api_key_path: api_key_path, type: "appstore", force: true)
+    end
+    lane :bump_version do
+        api_key_path = get_app_store_connect_api_key_path()
+        xcodeproj = "./ios/RNDeliveryWorkshop.xcodeproj"
+        package_version = JSON.parse(File.read("../package.json"))["version"]
+        xcodeproj = "./ios/RNDeliveryWorkshop.xcodeproj"
+        previous_build_number = app_store_build_number(
+            api_key_path: api_key_path,
+            app_identifier: "com.rndeliveryworkshop.testapp1",
+            live: false
+        )
+        increment_build_number(
+            xcodeproj: xcodeproj,
+            build_number: previous_build_number + 1
+        )
+        increment_version_number(
+            xcodeproj: xcodeproj,
+            version_number: package_version
+        )
+    end
+    lane :build do
+        certificates
+        bump_version
+        project_directory = get_root_project_directory()
+
+        gym(
+            scheme: "RNDeliveryWorkshop",
+            workspace: "#{project_directory}/ios/RNDeliveryWorkshop.xcworkspace",
+            output_directory: "#{project_directory}/fastlane/build",
+            export_method: "app-store"
+        )
+    end
+    lane :deploy_testflight do
+        certificates
+        api_key_path = get_app_store_connect_api_key_path()
+        project_directory = get_root_project_directory()
+        upload_to_testflight(
+            app_identifier: "com.rndeliveryworkshop.testapp1",
+            skip_waiting_for_build_processing: true,
+            api_key_path: api_key_path,
+            ipa: "#{project_directory}/fastlane/build/RNDeliveryWorkshop.ipa",
         )
     end
 end
