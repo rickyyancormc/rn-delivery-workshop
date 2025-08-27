@@ -82,7 +82,7 @@ jobs:
           script: |
             adb wait-for-device
             adb shell input keyevent 82
-            ./gradlew connectedAndroidTest --continue
+            ./android/gradlew connectedAndroidTest --continue
 
       - name: Build android with fastlane
         run: bundle exec fastlane android build
