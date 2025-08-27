@@ -33,6 +33,51 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 ----
 
+
+## iOS
+
+### ios certificates
+
+```sh
+[bundle exec] fastlane ios certificates
+```
+
+
+
+### ios update_certificates
+
+```sh
+[bundle exec] fastlane ios update_certificates
+```
+
+
+
+### ios bump_version
+
+```sh
+[bundle exec] fastlane ios bump_version
+```
+
+
+
+### ios build
+
+```sh
+[bundle exec] fastlane ios build
+```
+
+
+
+### ios deploy_testflight
+
+```sh
+[bundle exec] fastlane ios deploy_testflight
+```
+
+
+
+----
+
 This README.md is auto-generated and will be re-generated every time [_fastlane_](https://fastlane.tools) is run.
 
 More information about _fastlane_ can be found on [fastlane.tools](https://fastlane.tools).
