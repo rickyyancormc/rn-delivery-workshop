@@ -66,13 +66,18 @@ jobs:
           log-accepted-android-sdk-licenses: false
       - name: Start Metro Server
         run: npm run detox:start &
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
       - name: Run Detox tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 33
           arch: x86_64
           avd-name: Pixel_8_Pro_API_35
-          force-avd-creation: false
+          force-avd-creation: true
           disable-animations: false
           script: yarn detox:android:test:ci
 
