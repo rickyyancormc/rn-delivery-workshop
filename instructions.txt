@@ -1,0 +1,152 @@
+Workshop presentation instructions: RNDeliveryWorkshop change log walkthrough
+
+Purpose
+- Equip attendees to understand and reproduce the recent evolution of the project: E2E reliability improvements on Login, CI/CD best-practices refactor, and iOS app icon integration, culminating with iOS deploy steps.
+- Provide a slide-by-slide narrative with live demo checkpoints and code pointers.
+
+Pre-requisites for the workshop
+- Tools: Node 18+, Yarn (via Corepack), Xcode (for iOS), Android SDK, Ruby 3.3 with Bundler, Fastlane, CocoaPods, Watchman (optional), Detox CLI.
+- Secrets (for CI explanation only): MATCH_PASSWORD, MATCH_DEPLOY_KEY_BASE64, WORKSHOP_APPLE_API_KEY, Android signing and Play Store service JSON.
+- Emulators: iOS Simulator, Android emulator (Pixel 7 Pro recommended).
+
+Timeline overview (high-level commits)
+1) ea10920: Detox configuration finished, one test running on Android and iOS.
+2) e6bab09: Simple UI and simple testing.
+3) f8bf452 → 6ddfbf3 → 7684973 → ebe5843 → 5840dba → 3218b2c → f1878a4 → 19dec99 → 6e2cf58 → 3e0242f → 0872dbb → 68c3588 → 8bde767 → 1cf905b: Iterations on Android CI/testing runner and environment.
+4) 0fc9d59: Add ScrollView to Login and scroll in e2e so inputs are visible.
+5) 09c81f7 and e0db98c: Stabilize tests with keyboard behavior and tap on logo to blur inputs.
+6) ebb50a5, f062874: CI tweaks and artifact/ignore adjustments.
+7) 237afe4, 6561c69, 45bf9a7: Introduce Fastlane iOS signing config and merges.
+8) ae2712b: Add iOS icons (AppIcon set).
+9) cda2b00: Add iOS deployment to CI and bump package.json version to 0.0.2.
+
+Detailed sections with talking points and demos
+
+A. E2E reliability on the Login screen
+Relevant commits: 0fc9d59, 09c81f7, e0db98c
+Files touched:
+- src/screens/Login/index.tsx: Added ScrollView (testID: login-scroll), adjusted content container spacing.
+- e2e/starter.test.js: Added waitFor(...).whileElement(by.id('login-scroll')).scroll(...) to ensure inputs are visible; included taps on header logo to blur and trigger validation; keyboard visibility adjustments.
+Key messages:
+- Why scrolling matters: inputs can be off-screen on smaller devices/with keyboard.
+- Deterministic E2E: waitFor + whileElement.scroll reduces flakiness.
+Live demo:
+- Start Metro and run Detox iOS or Android tests.
+  - iOS: yarn detox:ios:build:ci && yarn detox:ios:test:ci
+  - Android: yarn detox:android:build:ci && yarn detox:android:test:ci
+Slide content:
+- Snippets showing ScrollView and the Detox waitFor/whileElement usage.
+- Before/After flakiness anecdote.
+
+B. CI/CD best practices in release workflow
+Relevant commits: ebb50a5, f062874, 237afe4, cda2b00 and earlier Android pipeline setup series.
+Files touched:
+- .github/workflows/release.yml
+Key messages:
+- Triggers preserved (push to tags v*, branch pipeline-config).
+- Node setup via actions/setup-node@v4 with Yarn cache; Corepack enables Yarn 4.
+- CocoaPods caching; Applesimutils for Detox.
+- Emulator runner with KVM; test scripts invoked via yarn.
+- iOS build and deploy via Fastlane after Detox tests; Android build and Play Store deploy via Fastlane.
+- Permissions and concurrency (if present) to avoid overlapping runs; artifacts upload paths.
+Live demo:
+- Show workflow YAML highlights in GitHub UI.
+- Trigger a dry run on a feature branch (skip store deploys in demo) or explain tag-triggered releases.
+Slides:
+- Diagram of jobs: build-ios and build-android; steps per job.
+- Common pitfalls: caching, Metro server background process, artifact paths.
+
+C. iOS App Icons integration
+Relevant commits: ae2712b
+Files touched:
+- ios/RNDeliveryWorkshop/Images.xcassets/AppIcon.appiconset/* and Contents.json
+Key messages:
+- Asset catalog name must match ASSETCATALOG_COMPILER_APPICON_NAME=AppIcon.
+- All required sizes for iPhone/iPad/marketing provided.
+- If using a single 1024x1024 source, generate sizes with a tool (Sketch/Figma/xcodebuild assetutil/Icon Set Creator).
+Live demo:
+- Open Xcode, verify General > App Icons and Launch Images points to AppIcon.
+- Run app on simulator to show icon.
+Slides:
+- Table of icon sizes and filenames.
+- Tip: Keep a script or design export preset.
+
+D. iOS deploy and versioning
+Relevant commits: cda2b00
+Files touched:
+- .github/workflows/release.yml; package.json version bump 0.0.2
+Key messages:
+- Consistent versioning between app metadata and release process.
+- Fastlane lanes: build and deploy_testflight for iOS; build and deploy_playstore for Android.
+- Secrets management and SSH for Match.
+Live demo:
+- Show Fastlane Fastfile lanes; explain required secrets.
+Slides:
+- Sequence diagram: Tag push -> CI -> Detox -> Build -> Upload -> TestFlight/Play Store.
+
+Suggested slide deck outline
+1. Title & goals of the workshop
+2. Project context and tooling
+3. E2E reliability improvements (Login ScrollView + Detox scrolling)
+   - Problem, solution, code, demo
+4. CI pipeline overview (Android + iOS)
+   - Triggers, caching, Metro, emulators, artifacts
+5. Fastlane and signing
+   - Match, lanes, secrets
+6. iOS App Icons
+   - Asset catalog, sizes, verification
+7. Release and deployment flow
+   - Tag strategy, versioning, environments
+8. Q&A and hands-on exercises
+
+Hands-on exercises (optional)
+- Break test intentionally by removing scroll and observe flakiness; re-add fix.
+- Add a new lane (e.g., beta) that runs tests only.
+- Replace icon set from a 1024x1024 base; verify in simulator.
+
+Key commands and code pointers
+- Login UI: src/screens/Login/index.tsx
+- Detox tests: e2e/starter.test.js
+- Workflow: .github/workflows/release.yml
+- Fastlane: fastlane/Fastfile, fastlane/Matchfile
+- iOS icons: ios/RNDeliveryWorkshop/Images.xcassets/AppIcon.appiconset
+- Run Detox:
+  - yarn detox:ios:build:ci && yarn detox:ios:test:ci
+  - yarn detox:android:build:ci && yarn detox:android:test:ci
+
+Speaker notes
+- Reinforce deterministic tests: visibility waits + targeted scrolling.
+- Emphasize minimal but effective CI caching and avoiding duplicated steps.
+- Call out artifact path correctness and emulator stability flags.
+- Mention secrets and security best practices (least privilege, repository/environment secrets).
+
+Appendix: Notable commits for reference (latest 30)
+- cda2b00: adding ios deployment to ci and package.json version to 0.0.2
+- ae2712b: adding ios icons
+- 6561c69: Merge branch 'feature/fastlane-config' into pipeline-config
+- 45bf9a7: adding fastlane configuration for ios signing the app
+- 237afe4: revert changes on release ci
+- f062874: refator on ci and adding artifacts on gitignore
+- ebb50a5: changing to pixel 7 pro
+- e0db98c: adding touch to logo
+- 09c81f7: fixing test to run with the keyboard showing
+- 0fc9d59: adding scrollview to app and scrolling in text for the elements to be visible
+- 1cf905b: changing to any device connected
+- 8bde767: running tests
+- 68c3588: adding android to path
+- 0872dbb: using example
+- 3e0242f: adding simple runner
+- 6e2cf58: removing name from device
+- 19dec99: removing abi
+- f1878a4: changing script
+- 3218b2c: renaming scripts dir
+- 5840dba: adding sh to run emulator
+- ebe5843: adding kvm
+- 7684973: adding detox test to pipeline
+- 6ddfbf3: removing unused env variable
+- f8bf452: Adding Pipeline Configuration for Android
+- 3d2c545: fastlane android configuration
+- e6bab09: adding simple ui and simple testing
+- ea10920: detox configuration finished, One test running in android and ios devices
+- 7f91e3c: using yarn
+- 595f67c: Initial commit

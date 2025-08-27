@@ -4,90 +4,97 @@ on:
     tags:
       - 'v*'
     branches:
-      - pipeline-config
+      - pipeline-config-fixed
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+
 jobs:
   build-ios:
     runs-on: macos-latest
     env:
       MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
-      TRIPSQUEE_APPLE_API_KEY: ${{ secrets.WORKSHOP_APPLE_API_KEY }}
+      WORKSHOP_APPLE_API_KEY: ${{ secrets.WORKSHOP_APPLE_API_KEY }}
       MATCH_DEPLOY_KEY_BASE64: ${{ secrets.MATCH_DEPLOY_KEY_BASE64 }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'yarn'
+
+      - name: Enable Corepack and Yarn
+        run: |
+          corepack enable
+          corepack prepare yarn@4.5.1 --activate
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
       - name: Setup SSH for Fastlane Match
+        if: env.MATCH_DEPLOY_KEY_BASE64 != ''
         run: |
           mkdir -p ~/.ssh
           echo "${{ env.MATCH_DEPLOY_KEY_BASE64 }}" | base64 --decode > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan github.com >> ~/.ssh/known_hosts
-          GIT_SSH_COMMAND="ssh -i ~/.ssh/id_rsa"
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+          echo 'GIT_SSH_COMMAND="ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes"' >> $GITHUB_ENV
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
         with:
-          node-version: 18
-      - name: Enable Corepack
-        run: corepack enable
+          ruby-version: '3.3'
+          bundler-cache: true
 
-      - name: Install Yarn
-        run: corepack prepare yarn@4.5.1 --activate
-
-      - name: Cache node_modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            node_modules
-            **/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install dependencies
-        run: yarn install
       - name: Cache CocoaPods
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ios/Pods
           key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
           restore-keys: |
             ${{ runner.os }}-pods-
-      - name: Cache vendor/bundle
-        uses: actions/cache@v3
-        with:
-          path: vendor/bundle
-          key: ${{ runner.os }}-bundle-${{ hashFiles('**/Gemfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-bundle-
-      - name: Install bundles
-        run: |
-          cd ios
-          bundle install
-      - name: Install Pods
-        run: |
-          cd ios
-          bundle exec pod install
-      - name: Install bundles
-        run: bundle install
+
+      - name: Install CocoaPods
+        working-directory: ios
+        run: bundle exec pod install
+
       - name: Install Applesimutils
         run: |
           brew tap wix/brew
           brew install applesimutils
+
       - name: Start Metro Server
-        run: npm run detox:start &
-      - name: build Detox tests
-        run: npm run detox:ios:build:ci
-      - name: Run Detox tests
-        run: npm run detox:ios:test:ci
-      - name: Build and Deploy iOS
+        run: yarn detox:start &
+
+      - name: Build Detox tests (iOS)
+        run: yarn detox:ios:build:ci
+
+      - name: Run Detox tests (iOS)
+        run: yarn detox:ios:test:ci
+
+      - name: Build iOS with Fastlane
         run: bundle exec fastlane ios build
-      - name: 'Upload IPA Artifact'
+
+      - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
           name: RNDeliveryWorkshop.ipa
           path: ./fastlane/builds/
           retention-days: 5
-      - name: Deploy iOS
+
+      - name: Deploy iOS to TestFlight
         run: bundle exec fastlane ios deploy_testflight
+
   build-android:
     runs-on: ubuntu-latest
     env:
@@ -99,41 +106,29 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
-      - name: Enable Corepack
-        run: corepack enable
+          cache: 'yarn'
 
-      - name: Install Yarn
-        run: corepack prepare yarn@4.5.1 --activate
-
-      - name: Cache node_modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            node_modules
-            **/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+      - name: Enable Corepack and Yarn
+        run: |
+          corepack enable
+          corepack prepare yarn@4.5.1 --activate
 
       - name: Install dependencies
-        run: yarn install
-      - name: Cache vendor/bundle
-        uses: actions/cache@v3
-        with:
-          path: vendor/bundle
-          key: ${{ runner.os }}-bundle-${{ hashFiles('**/Gemfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-bundle-
-      - name: Install Ruby and Bundles
+        run: yarn install --immutable
+
+      - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.3'
           bundler-cache: true
-      - uses: actions/setup-java@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -141,19 +136,23 @@ jobs:
           cache-dependency-path: |
             android/**/*.gradle*
             android/**/gradle-wrapper.properties
+
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
           accept-android-sdk-licenses: true
           log-accepted-android-sdk-licenses: false
+
       - name: Start Metro Server
-        run: npm run detox:start &
+        run: yarn detox:start &
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Start Android Emulator
+
+      - name: Start Android Emulator and run Detox
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
@@ -169,12 +168,14 @@ jobs:
 
       - name: Build android with fastlane
         run: bundle exec fastlane android build
-      - name: 'Upload Abb Artifact'
+
+      - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-release.aab
-          path: ./android/app/builds/outputs/bundle/release
+          path: android/app/build/outputs/bundle/release/*.aab
           retention-days: 5
+
       - name: Deploy android with fastlane
         run: bundle exec fastlane android deploy_playstore
 
