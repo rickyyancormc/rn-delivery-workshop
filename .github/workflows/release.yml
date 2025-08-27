@@ -10,7 +10,7 @@ jobs:
     runs-on: macos-latest
     env:
       MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
-      TRIPSQUEE_APPLE_API_KEY: ${{ secrets.TRIPSQUEE_APPLE_API_KEY }}
+      TRIPSQUEE_APPLE_API_KEY: ${{ secrets.WORKSHOP_APPLE_API_KEY }}
       MATCH_DEPLOY_KEY_BASE64: ${{ secrets.MATCH_DEPLOY_KEY_BASE64 }}
     steps:
       - name: Setup SSH for Fastlane Match
@@ -78,6 +78,16 @@ jobs:
         run: npm run detox:ios:build:ci
       - name: Run Detox tests
         run: npm run detox:ios:test:ci
+      - name: Build and Deploy iOS
+        run: bundle exec fastlane ios build
+      - name: 'Upload IPA Artifact'
+        uses: actions/upload-artifact@v4
+        with:
+          name: RNDeliveryWorkshop.ipa
+          path: ./fastlane/builds/
+          retention-days: 5
+      - name: Deploy iOS
+        run: bundle exec fastlane ios deploy_testflight
   build-android:
     runs-on: ubuntu-latest
     env:
