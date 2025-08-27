@@ -6,6 +6,78 @@ on:
     branches:
       - pipeline-config
 jobs:
+  build-ios:
+    runs-on: macos-latest
+    env:
+      MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+      TRIPSQUEE_APPLE_API_KEY: ${{ secrets.TRIPSQUEE_APPLE_API_KEY }}
+      MATCH_DEPLOY_KEY_BASE64: ${{ secrets.MATCH_DEPLOY_KEY_BASE64 }}
+    steps:
+      - name: Setup SSH for Fastlane Match
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ env.MATCH_DEPLOY_KEY_BASE64 }}" | base64 --decode > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          GIT_SSH_COMMAND="ssh -i ~/.ssh/id_rsa"
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install Yarn
+        run: corepack prepare yarn@4.5.1 --activate
+
+      - name: Cache node_modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            **/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: yarn install
+      - name: Cache CocoaPods
+        uses: actions/cache@v3
+        with:
+          path: ios/Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+      - name: Cache vendor/bundle
+        uses: actions/cache@v3
+        with:
+          path: vendor/bundle
+          key: ${{ runner.os }}-bundle-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bundle-
+      - name: Install bundles
+        run: |
+          cd ios
+          bundle install
+      - name: Install Pods
+        run: |
+          cd ios
+          bundle exec pod install
+      - name: Install bundles
+        run: bundle install
+      - name: Install Applesimutils
+        run: |
+          brew tap wix/brew
+          brew install applesimutils
+      - name: Start Metro Server
+        run: npm run detox:start &
+      - name: build Detox tests
+        run: npm run detox:ios:build:ci
+      - name: Run Detox tests
+        run: npm run detox:ios:test:ci
   build-android:
     runs-on: ubuntu-latest
     env:

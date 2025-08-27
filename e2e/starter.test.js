@@ -48,6 +48,7 @@ describe('Login flow E2E', () => {
     await element(by.id('login-email-input')).typeText('test@example.com');
     await element(by.id('login-password-input')).clearText();
     await element(by.id('login-password-input')).typeText('wrongpass');
+    await element(by.id('login-logo')).tap();
 
     await element(by.id('login-signin-button')).tap();
 
@@ -69,6 +70,8 @@ describe('Login flow E2E', () => {
     await element(by.id('login-email-input')).typeText('test@example.com');
     await element(by.id('login-password-input')).clearText();
     await element(by.id('login-password-input')).typeText('password123');
+
+    await element(by.id('login-logo')).tap();
 
     await element(by.id('login-signin-button')).tap();
 
