@@ -71,22 +71,11 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Run Detox tests
+      - name: run tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
-          arch: x86_64
-          avd-name: Pixel_8_Pro_API_35
-          force-avd-creation: true
-          disable-animations: false
-          script: |
-            chmod +x ./scripts/start_emulator_2.sh
-            ./scripts/start_emulator_2.sh
-            
-            yarn detox:android:test:ci
-            
-            echo "Closing connection with emulator-5554"
-            adb -s emulator-5554 emu kill || true
+          script: ./android/gradlew connectedCheck
 
       - name: Build android with fastlane
         run: bundle exec fastlane android build
