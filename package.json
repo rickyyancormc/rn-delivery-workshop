@@ -10,7 +10,7 @@
     "test": "jest",
     "detox:start": "E2E_TESTS='true' react-native start",
     "detox:android:build:ci": "detox build --configuration android.emu.debug",
-    "detox:android:test:ci": "detox test --configuration android.emu.debug --headless --record-logs failing --record-videos failing --take-screenshots failing"
+    "detox:android:test:ci": "detox test --configuration android.att.debug --headless --record-logs failing --record-videos failing --take-screenshots failing"
   },
   "dependencies": {
     "react": "19.0.0",
