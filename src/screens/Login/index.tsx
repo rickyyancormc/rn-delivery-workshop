@@ -8,6 +8,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ScrollView,
 } from 'react-native';
 import { colors } from '../../theme/colors';
 
@@ -55,7 +56,13 @@ export default function LoginScreen({ onSignIn, loading = false, authError = '' 
         style={styles.container}
         behavior={Platform.select({ ios: 'padding', android: undefined })}
       >
-        <View style={styles.header}>
+        <ScrollView
+          testID="login-scroll"
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
           <View style={styles.logoCircle} testID="login-logo" />
           <Text style={styles.title} testID="login-title">Welcome back</Text>
           <Text style={styles.subtitle} testID="login-subtitle">Sign in to continue</Text>
@@ -124,6 +131,7 @@ export default function LoginScreen({ onSignIn, loading = false, authError = '' 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Don’t have an account? <Text style={styles.footerLink} testID="login-signup-link">Sign up</Text></Text>
         </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -137,6 +145,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 24,
+    justifyContent: 'space-between',
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'space-between',
   },
   header: {
