@@ -1,0 +1,70 @@
+fastlane_require "fileutils"
+
+require 'base64'
+
+def decode_base64_string(encoded_string, output_file_path)
+    decoded_content = Base64.decode64(encoded_string)
+    FileUtils.mkdir_p(File.dirname(output_file_path))
+    File.open(output_file_path, 'wb') { |file| file.write(decoded_content) }
+end
+
+def get_root_project_directory()
+    File.expand_path("..")
+end
+
+def get_play_store_service_file()
+    project_directory = get_root_project_directory()
+    encoded_play_store_service_file_string = ENV['WORKSHOP_PLAY_STORE_SERVICE_FILE']
+    decoded_play_store_service_file_path = "#{project_directory}/fastlane/certs/google-service-file.json"
+    decode_base64_string(encoded_play_store_service_file_string, decoded_play_store_service_file_path)
+    decoded_play_store_service_file_path
+end
+
+platform :android do
+    before_all do
+        setup_ci
+    end
+
+    lane :build do
+        project_directory = get_root_project_directory()
+        encoded_keystore_string = ENV['WORKSHOP_STORE_FILE']
+        decoded_keystore_path = "#{project_directory}/fastlane/certs/workshop-release.keystore"
+        decode_base64_string(encoded_keystore_string, decoded_keystore_path)
+        decoded_service_key_path = get_play_store_service_file()
+        previous_build_number = google_play_track_version_codes(
+            json_key: decoded_service_key_path,
+            package_name: "com.rndeliveryworkshop",
+            track: "internal",
+        )[0]
+        package_version = JSON.parse(File.read("../package.json"))["version"]
+        gradle(
+            task: "bundle",
+            build_type: "release",
+            project_dir: "#{project_directory}/android",
+            properties: {
+                "isFastlane" => "true",
+                "versionCode" => previous_build_number.to_i + 1,
+                "versionName" => package_version,
+                "storePath" => decoded_keystore_path,
+                "storePassword" => ENV['WORKSHOP_RELEASE_STORE_PASSWORD'],
+                "storeKeyAlias" => ENV['WORKSHOP_RELEASE_KEY_ALIAS'],
+                "storeKeyAliasPassword" => ENV['WORKSHOP_RELEASE_KEY_ALIAS_PASSWORD'],
+            }
+        )
+    end
+    lane :deploy_playstore do
+        project_directory = get_root_project_directory()
+        decoded_service_key_path = get_play_store_service_file()
+        upload_to_play_store(
+            package_name: "com.rndeliveryworkshop",
+            track: "internal",
+            json_key: decoded_service_key_path,
+            aab: "#{project_directory}/android/app/build/outputs/bundle/release/app-release.aab",
+            skip_upload_metadata: true,
+            skip_upload_changelogs: true,
+            skip_upload_images: true,
+            skip_upload_screenshots: true,
+            release_status: "draft", #TODO: it on draft mode just for testing otherwise it won't allow to upload
+        )
+    end
+end

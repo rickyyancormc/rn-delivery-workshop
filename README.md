@@ -124,3 +124,27 @@ Entry file `index.js` still imports from `./App`, which now proxies to `./src/ap
 - Add your initial navigation under `src/navigation` and point `src/app/App.tsx` to use it.
 - Consider adding TypeScript path aliases as the project grows.
 - Keep components small and reusable; co-locate tests with implementation or inside `__tests__`.
+
+## Fastlane (build and bump build numbers)
+
+Fastlane lanes are configured at the project root under `fastlane/Fastfile`. They support both iOS and Android to build and increment the build number (iOS: CFBundleVersion, Android: versionCode).
+
+Prerequisites:
+- Ruby/Bundler (recommended): bundle install
+- iOS: Xcode + CocoaPods installed (for workspace builds)
+- Android: Android SDK/NDK set up
+
+Examples (run from the project root):
+
+iOS:
+- Increment build number automatically: `bundle exec fastlane ios bump_build`
+- Increment build number to a specific value: `bundle exec fastlane ios bump_build build_number:123`
+- Build Release: `bundle exec fastlane ios build`
+
+Android:
+- Increment versionCode: `bundle exec fastlane android bump_build`
+- Build Release: `bundle exec fastlane android build`
+
+Notes:
+- iOS lanes use workspace `ios/RNDeliveryWorkshop.xcworkspace` and scheme `RNDeliveryWorkshop`.
+- Android lanes run Gradle assemble in project_dir `android`.
