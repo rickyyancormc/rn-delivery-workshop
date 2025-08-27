@@ -1,0 +1,78 @@
+name: Build and Release
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - pipeline-config
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    env:
+      WORKSHOP_RELEASE_STORE_PASSWORD: ${{ secrets.WORKSHOP_RELEASE_STORE_PASSWORD }}
+      WORKSHOP_RELEASE_KEY_ALIAS: ${{ secrets.WORKSHOP_RELEASE_KEY_ALIAS }}
+      WORKSHOP_RELEASE_KEY_ALIAS_PASSWORD: ${{ secrets.WORKSHOP_RELEASE_KEY_ALIAS_PASSWORD }}
+      WORKSHOP_STORE_FILE: ${{ secrets.WORKSHOP_STORE_FILE }}
+      WORKSHOP_APPLE_API_KEY: ${{ secrets.WORKSHOP_APPLE_API_KEY }}
+      WORKSHOP_PLAY_STORE_SERVICE_FILE: ${{ secrets.WORKSHOP_PLAY_STORE_SERVICE_FILE }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install Yarn
+        run: corepack prepare yarn@4.5.1 --activate
+
+      - name: Cache node_modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            **/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: yarn install
+      - name: Cache vendor/bundle
+        uses: actions/cache@v3
+        with:
+          path: vendor/bundle
+          key: ${{ runner.os }}-bundle-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bundle-
+      - name: Install Ruby and Bundles
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+          cache-dependency-path: |
+            android/**/*.gradle*
+            android/**/gradle-wrapper.properties
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          accept-android-sdk-licenses: true
+          log-accepted-android-sdk-licenses: false
+      - name: Build android with fastlane
+        run: bundle exec fastlane android build
+      - name: 'Upload Abb Artifact'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release.aab
+          path: ./android/app/builds/outputs/bundle/release
+          retention-days: 5
+      - name: Deploy android with fastlane
+        run: bundle exec fastlane android deploy_playstore
+
