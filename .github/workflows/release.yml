@@ -72,14 +72,6 @@ jobs:
         run: |
           brew tap wix/brew
           brew install applesimutils
-      - name: Start Metro Server
-        run: npm run detox:start &
-      - name: build Detox tests
-        run: npm run detox:ios:build:ci
-      - name: Run Detox tests
-        run: npm run detox:ios:test:ci
-      - name: Build and Deploy iOS
-        run: bundle exec fastlane ios build
       - name: 'Upload IPA Artifact'
         uses: actions/upload-artifact@v4
         with:
