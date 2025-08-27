@@ -76,3 +76,4 @@ yarn-error.log
 
 fastlane/certs
 fastlane/certs/*
+artifacts/
