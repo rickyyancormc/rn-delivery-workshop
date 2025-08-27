@@ -79,7 +79,14 @@ jobs:
           avd-name: Pixel_8_Pro_API_35
           force-avd-creation: true
           disable-animations: false
-          script: yarn detox:android:test:ci
+          script: |
+            chmod +x ./scripts/start_emulator_2.sh
+            ./scripts/start_emulator_2.sh
+            
+            yarn detox:android:test:ci
+            
+            echo "Closing connection with emulator-5554"
+            adb -s emulator-5554 emu kill || true
 
       - name: Build android with fastlane
         run: bundle exec fastlane android build
