@@ -68,10 +68,9 @@ jobs:
           bundle exec pod install
       - name: Install bundles
         run: bundle install
-      - name: Install Applesimutils
-        run: |
-          brew tap wix/brew
-          brew install applesimutils
+      - name: Build and Deploy iOS
+        run: bundle exec fastlane ios build
+
       - name: 'Upload IPA Artifact'
         uses: actions/upload-artifact@v4
         with:
